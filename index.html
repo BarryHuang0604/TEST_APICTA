@@ -2,21 +2,85 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IoT 即時資料顯示</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 LED 同步顯示</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      text-align: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    h1 { margin-top: 20px; }
+    .led-ring {
+      position: relative;
+      width: 250px;
+      height: 250px;
+      margin: 50px auto;
+    }
+    .led {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #333;
+      transition: 0.3s;
+    }
+    .led.active {
+      background: #4CAF50;
+      box-shadow: 0 0 20px #4CAF50;
+    }
+  </style>
 </head>
 <body>
-  <h1>ESP32 即時資料監測</h1>
-  <div class="data-container">
-    <p>目前感測數值：</p>
-    <div id="dataValue">載入中...</div>
-  </div>
+  <h1>ESP32 LED 同步顯示</h1>
+  <div class="led-ring" id="ledRing"></div>
 
-  <footer>
-    <p>資料來源：Arduino IoT Cloud</p>
-  </footer>
+  <script>
+    // === ⚠️ 不安全區域：這些資訊任何人都能看到 ===
+    const TOKEN = "YOUR_ACCESS_TOKEN"; // 請替換成你的 Access Token
+    const DEVICE_ID = "1e9fa746-cc14-4e56-ade9-2c38f825e091";
+    const PROPERTY_ID = "cec2596e-336c-4579-9514-f1877ce82cc5";
+    // =================================================
 
-  <script src="script.js"></script>
+    const numLeds = 8;
+    const radius = 100;
+    const center = 105;
+    const ledRing = document.getElementById("ledRing");
+
+    // 建立 8 顆燈
+    for (let i = 0; i < numLeds; i++) {
+      const led = document.createElement("div");
+      led.classList.add("led");
+      const angle = (i / numLeds) * 2 * Math.PI - Math.PI / 2;
+      led.style.left = `${center + radius * Math.cos(angle)}px`;
+      led.style.top = `${center + radius * Math.sin(angle)}px`;
+      ledRing.appendChild(led);
+    }
+    const leds = document.querySelectorAll(".led");
+
+    async function fetchLightData() {
+      try {
+        const res = await fetch(
+          `https://api2.arduino.cc/iot/v2/devices/${DEVICE_ID}/properties/${PROPERTY_ID}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const data = await res.json();
+        const activeLight = data.last_value;
+        leds.forEach((led, i) => led.classList.toggle("active", i === activeLight));
+      } catch (err) {
+        console.error("⚠️ 取得資料錯誤：", err);
+      }
+    }
+
+    // 每 0.5 秒更新一次燈號
+    setInterval(fetchLightData, 500);
+    fetchLightData();
+  </script>
 </body>
 </html>
